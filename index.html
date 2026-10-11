@@ -223,24 +223,55 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
 .btn-ghost { background: #fff; color: #333; border: 1px solid var(--line) !important; }
 
 /* 日期按钮选择器 */
-select.date-btn {
+.date-display {
   flex: 1;
   height: 42px;
-  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
   font-size: 14px;
-  font-family: inherit;
   color: #1a1a1a;
-  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23999' d='M5 6L0 0h10z'/%3E%3C/svg%3E") no-repeat right 10px center;
-  appearance: none;
-  -webkit-appearance: none;
+  background: #fff;
   cursor: pointer;
-  outline: none;
-  text-align: center;
+  user-select: none;
 }
-select.date-btn:focus { border-color: var(--primary); }
-select.date-btn option { text-align: center; }
+.date-display:active { background: #f0f5ff; border-color: var(--primary); }
+.date-display .dt { font-weight: 500; }
+
+/* 日历模态框 */
+.cal-modal .modal-panel { max-width: 340px; padding: 0; overflow: hidden; }
+.cal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; background: var(--primary); color: #fff;
+}
+.cal-head button {
+  background: transparent; border: 0; color: #fff; font-size: 20px;
+  width: 32px; height: 32px; cursor: pointer; line-height: 1;
+}
+.cal-title { font-size: 16px; font-weight: 600; }
+.cal-weekdays {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  padding: 8px 0; background: #f0f5ff;
+}
+.cal-weekdays div {
+  text-align: center; font-size: 12px; color: #666; font-weight: 600;
+}
+.cal-days {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  padding: 4px 8px 12px;
+}
+.cal-day {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; cursor: pointer; border-radius: 50%; margin: 2px;
+  color: #333;
+}
+.cal-day:hover { background: #f0f5ff; }
+.cal-day.other { color: #ccc; }
+.cal-day.today { font-weight: 700; color: var(--primary); }
+.cal-day.selected { background: var(--primary); color: #fff !important; }
 
 /* 编辑模态框 */
 .modal {
@@ -494,17 +525,16 @@ select.date-btn option { text-align: center; }
       <div class="form-row-2">
         <div class="form-group">
           <label class="form-label">体检日期 <span class="req">*</span></label>
-          <div style="display:flex;gap:6px;">
-            <select class="date-btn" id="f-year" onchange="onDateChange()"></select>
-            <select class="date-btn" id="f-month" onchange="onDateChange()"></select>
-            <select class="date-btn" id="f-day" onchange="onDateChange()"></select>
+          <div class="date-display" onclick="openCalendar()">
+            <span>📅</span>
+            <span class="dt" id="f-date-display">请选择日期</span>
           </div>
         </div>
         <div class="form-group">
           <label class="form-label">健康证号 <span class="req">*</span></label>
-          <div style="display:flex;gap:8px;">
-            <input type="text" class="form-input" id="f-certno" maxlength="14" placeholder="14位编号" style="flex:1;">
-            <button type="button" onclick="generateCertNo()" style="width:64px;height:42px;border:1px solid #d1d5db;border-radius:8px;background:#f0f5ff;color:#1a56db;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;">生成</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" class="form-input" id="f-certno" maxlength="14" placeholder="14位编号" style="flex:1;min-width:0;">
+            <button type="button" onclick="generateCertNo()" style="flex-shrink:0;width:64px;height:42px;border:1px solid #d1d5db;border-radius:8px;background:#f0f5ff;color:#1a56db;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">生成</button>
           </div>
         </div>
       </div>
@@ -541,6 +571,25 @@ select.date-btn option { text-align: center; }
   </div>
 </div>
 
+<!-- 日历模态框 -->
+<div class="modal cal-modal" id="calModal">
+  <div class="modal-panel">
+    <div class="cal-head">
+      <button onclick="calPrevMonth()">&#8249;</button>
+      <span class="cal-title" id="calTitle">2026年1月</span>
+      <button onclick="calNextMonth()">&#8250;</button>
+    </div>
+    <div class="cal-weekdays">
+      <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+    </div>
+    <div class="cal-days" id="calDays"></div>
+    <div style="padding:0 16px 16px;text-align:center;">
+      <button onclick="selectToday()" style="width:100%;height:38px;border:1px solid var(--primary);background:#fff;color:var(--primary);border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;margin-bottom:8px;">选择今天</button>
+      <button onclick="closeCalendar()" style="width:100%;height:38px;border:0;background:#f0f2f5;color:#333;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;">取消</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -555,7 +604,8 @@ const defaultData = {
   org: '儋州市妇幼保健院',
   date: '2026-08-19',
   certno: '46900426507297',
-  photo: ''
+  photo: '',
+  photoUrl: ''
 };
 
 function loadData() {
@@ -565,7 +615,14 @@ function loadData() {
   } catch(e) { return {...defaultData}; }
 }
 function saveData(d) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
+  try {
+    // 不保存大体积的 photo data URL 到 localStorage（避免超配额）
+    const toSave = Object.assign({}, d);
+    delete toSave.photo;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+  } catch(e) {
+    console.warn('本地存储失败:', e.message);
+  }
 }
 
 let data = loadData();
@@ -611,8 +668,9 @@ async function uploadPhotoToCloud(photoDataUrl) {
   return url;
 }
 
-// 上传全部数据到云端（JSON文件）
-async function uploadDataToCloud() {
+// ========== 二维码分享URL ==========
+// 将所有数据编码进URL hash，避免CORS问题
+function buildShareURL() {
   const shareData = {
     n: data.name,
     g: data.gender,
@@ -623,35 +681,10 @@ async function uploadDataToCloud() {
     h: data.certno,
     p: data.photoUrl || ''
   };
-  const jsonBlob = new Blob([JSON.stringify(shareData)], {type: 'application/json'});
-  const formData = new FormData();
-  formData.append('reqtype', 'fileupload');
-  formData.append('fileToUpload', jsonBlob, 'cert.json');
-  const resp = await fetch('https://catbox.moe/user/api.php', {
-    method: 'POST',
-    body: formData
-  });
-  if (!resp.ok) throw new Error('数据上传失败');
-  const url = (await resp.text()).trim();
-  if (!url.startsWith('http')) throw new Error('返回异常');
-  return url;
-}
-
-// ========== 二维码分享URL ==========
-function buildShareURL() {
-  // 如果有云端数据URL，二维码只含短链接
-  if (data.cloudDataUrl) {
-    const base = location.origin + location.pathname;
-    return base + '#d=' + data.cloudDataUrl;
-  }
-  // 兜底：数据编码在hash里（无网络时）
-  const shareData = {
-    n: data.name, g: data.gender, c: data.category,
-    i: data.idcard, o: data.org, d: data.date,
-    h: data.certno, p: data.photoUrl || ''
-  };
   const json = JSON.stringify(shareData);
-  const encoded = btoa(unescape(encodeURIComponent(json)));
+  // 使用URL安全的base64编码
+  const encoded = btoa(unescape(encodeURIComponent(json)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const base = location.origin + location.pathname;
   return base + '#s=' + encoded;
 }
@@ -659,21 +692,18 @@ function buildShareURL() {
 // 从URL hash读取分享数据
 function loadFromHash() {
   const hash = location.hash;
-  if (!hash) return null;
-  // 模式1：云端数据URL（#d=https://...）
-  if (hash.startsWith('#d=')) {
-    const dataUrl = hash.substring(3);
-    return { _cloudUrl: dataUrl };
+  if (!hash || !hash.startsWith('#s=')) return null;
+  try {
+    let encoded = hash.substring(3);
+    // 还原URL安全base64
+    encoded = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    while (encoded.length % 4) encoded += '=';
+    const json = decodeURIComponent(escape(atob(encoded)));
+    return JSON.parse(json);
+  } catch(e) {
+    console.error('解析分享数据失败:', e);
+    return null;
   }
-  // 模式2：内联数据（#s=base64）
-  if (hash.startsWith('#s=')) {
-    try {
-      const encoded = hash.substring(3);
-      const json = decodeURIComponent(escape(atob(encoded)));
-      return JSON.parse(json);
-    } catch(e) { return null; }
-  }
-  return null;
 }
 
 // ========== 渲染 ==========
@@ -739,25 +769,7 @@ function renderQR() {
 // ========== 查看模式 ==========
 function enterViewMode(shareData) {
   isViewMode = true;
-  // 如果是云端URL模式，需要先fetch数据
-  if (shareData._cloudUrl) {
-    // 先显示加载中
-    data = {category:'', name:'加载中...', gender:'', idcard:'', org:'', date:'', certno:'', photo:'', photoUrl:''};
-    render();
-    fetch(shareData._cloudUrl).then(r => r.json()).then(function(j) {
-      data = {
-        category: j.c || '', name: j.n || '', gender: j.g || '',
-        idcard: j.i || '', org: j.o || '', date: j.d || '',
-        certno: j.h || '', photo: '', photoUrl: j.p || ''
-      };
-      render();
-    }).catch(function() {
-      data = {category:'', name:'数据加载失败', gender:'', idcard:'', org:'', date:'', certno:'', photo:'', photoUrl:''};
-      render();
-    });
-    return;
-  }
-  // 内联数据模式
+  // 直接使用URL hash中的内联数据，无需fetch（避免CORS问题）
   data = {
     category: shareData.c || '',
     name: shareData.n || '',
@@ -779,52 +791,80 @@ function exitViewMode() {
   render();
 }
 
-// ========== 日期按钮选择器 ==========
-function initDateSelectors() {
-  const ySel = document.getElementById('f-year');
-  const mSel = document.getElementById('f-month');
-  const dSel = document.getElementById('f-day');
-  if (!ySel.options.length) {
-    const curY = new Date().getFullYear();
-    for (let y = curY - 5; y <= curY + 3; y++) {
-      ySel.add(new Option(y + '年', y));
-    }
+// ========== 日历选择器 ==========
+let calYear, calMonth, calSelectedDate = null;
+
+function openCalendar() {
+  const cur = calSelectedDate ? new Date(calSelectedDate) : (data.date ? new Date(data.date) : new Date());
+  calYear = cur.getFullYear();
+  calMonth = cur.getMonth();
+  renderCalendar();
+  document.getElementById('calModal').classList.add('show');
+}
+function closeCalendar() {
+  document.getElementById('calModal').classList.remove('show');
+}
+function calPrevMonth() {
+  calMonth--;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+function calNextMonth() {
+  calMonth++;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderCalendar();
+}
+function selectToday() {
+  const t = new Date();
+  calYear = t.getFullYear();
+  calMonth = t.getMonth();
+  pickDate(t.getDate());
+}
+function renderCalendar() {
+  document.getElementById('calTitle').textContent = calYear + '年' + (calMonth + 1) + '月';
+  const container = document.getElementById('calDays');
+  container.innerHTML = '';
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const daysInPrev = new Date(calYear, calMonth, 0).getDate();
+  const today = new Date();
+  const todayStr = today.getFullYear() + '-' + (today.getMonth()) + '-' + today.getDate();
+
+  // 上个月末尾
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const d = document.createElement('div');
+    d.className = 'cal-day other';
+    d.textContent = daysInPrev - i;
+    container.appendChild(d);
   }
-  if (!mSel.options.length) {
-    for (let m = 1; m <= 12; m++) {
-      mSel.add(new Option((m < 10 ? '0' : '') + m + '月', m));
-    }
+  // 本月
+  for (let d = 1; d <= daysInMonth; d++) {
+    const cell = document.createElement('div');
+    cell.className = 'cal-day';
+    cell.textContent = d;
+    const dateStr = calYear + '-' + calMonth + '-' + d;
+    if (dateStr === todayStr) cell.classList.add('today');
+    if (calSelectedDate === formatDate(calYear, calMonth, d)) cell.classList.add('selected');
+    cell.onclick = function() { pickDate(d); };
+    container.appendChild(cell);
+  }
+  // 下个月开头
+  const totalCells = firstDay + daysInMonth;
+  const remaining = (7 - totalCells % 7) % 7;
+  for (let i = 1; i <= remaining; i++) {
+    const d = document.createElement('div');
+    d.className = 'cal-day other';
+    d.textContent = i;
+    container.appendChild(d);
   }
 }
-function onDateChange() {
-  const y = document.getElementById('f-year').value;
-  const m = document.getElementById('f-month').value;
-  const dSel = document.getElementById('f-day');
-  const oldDay = dSel.value;
-  if (!y || !m) return;
-  const days = new Date(y, m, 0).getDate();
-  dSel.innerHTML = '';
-  for (let d = 1; d <= days; d++) {
-    dSel.add(new Option((d < 10 ? '0' : '') + d + '日', d));
-  }
-  if (oldDay && oldDay <= days) dSel.value = oldDay;
+function pickDate(day) {
+  calSelectedDate = formatDate(calYear, calMonth, day);
+  document.getElementById('f-date-display').textContent = calSelectedDate;
+  closeCalendar();
 }
-function getDateValue() {
-  const y = document.getElementById('f-year').value;
-  const m = document.getElementById('f-month').value;
-  const d = document.getElementById('f-day').value;
-  if (!y || !m || !d) return '';
-  return y + '-' + (m < 10 ? '0' : '') + m + '-' + (d < 10 ? '0' : '') + d;
-}
-function setDateValue(dateStr) {
-  if (!dateStr) return;
-  const parts = dateStr.split('-');
-  if (parts.length !== 3) return;
-  initDateSelectors();
-  document.getElementById('f-year').value = parts[0];
-  document.getElementById('f-month').value = parseInt(parts[1]);
-  onDateChange();
-  document.getElementById('f-day').value = parseInt(parts[2]);
+function formatDate(y, m, d) {
+  return y + '-' + (m < 9 ? '0' : '') + (m + 1) + '-' + (d < 10 ? '0' : '') + d;
 }
 
 // ========== 编辑功能 ==========
@@ -834,13 +874,16 @@ function openEdit() {
   document.getElementById('f-gender').value = data.gender;
   document.getElementById('f-idcard').value = data.idcard;
   document.getElementById('f-org').value = data.org;
-  initDateSelectors();
-  setDateValue(data.date);
   document.getElementById('f-certno').value = data.certno;
 
+  // 日期显示
+  calSelectedDate = data.date || '';
+  document.getElementById('f-date-display').textContent = data.date || '请选择日期';
+
   const pp = document.getElementById('photoPreview');
-  if (data.photo) {
-    pp.innerHTML = '<img src="' + data.photo + '">';
+  if (data.photoUrl || data.photo) {
+    const src = data.photoUrl || data.photo;
+    pp.innerHTML = '<img src="' + src + '">';
   } else {
     pp.innerHTML = '<span class="ph">点击上传</span>';
   }
@@ -854,7 +897,7 @@ function saveEdit() {
   const name = document.getElementById('f-name').value.trim();
   const idcard = document.getElementById('f-idcard').value.trim();
   const org = document.getElementById('f-org').value.trim();
-  const date = getDateValue();
+  const date = calSelectedDate;
   const certno = document.getElementById('f-certno').value.trim();
 
   if (!name) return toast('请输入姓名');
@@ -871,9 +914,8 @@ function saveEdit() {
     org: org,
     date: date,
     certno: certno,
-    photo: data.photo,
-    photoUrl: data.photoUrl || '',
-    cloudDataUrl: data.cloudDataUrl || ''
+    photo: data.photo || '',
+    photoUrl: data.photoUrl || ''
   };
   saveData(data);
   closeEdit();
@@ -883,31 +925,30 @@ function saveEdit() {
   syncToCloud();
 }
 
-// 同步照片+数据到云端
+// 同步照片到云端，然后重新生成二维码（含全部数据）
 async function syncToCloud() {
   try {
-    // 步骤1：上传照片（如果有新照片还没上传）
+    // 步骤1：如果有本地照片但还没上传云端，先上传
     if (data.photo && !data.photoUrl) {
       toast('正在上传照片到云端...');
       const photoUrl = await uploadPhotoToCloud(data.photo);
       data.photoUrl = photoUrl;
+      // 保留 data.photo 在内存中供 canvas 绘制使用（不存入localStorage）
       saveData(data);
-      toast('照片已上传，正在同步数据...');
+      // 重新渲染卡片
+      render();
+      toast('照片已上传，正在生成二维码...');
     }
 
-    // 步骤2：上传全部数据（含照片URL）到云端JSON
-    const cloudUrl = await uploadDataToCloud();
-    data.cloudDataUrl = cloudUrl;
-    saveData(data);
-
-    // 步骤3：重新生成二维码（短链接）
+    // 步骤2：重新生成二维码（所有数据+照片URL编码进URL hash）
     renderQR();
-    toast('所有数据已同步到云端');
+    saveData(data);
+    toast('数据已同步，二维码已更新');
   } catch(err) {
     console.error('同步失败:', err);
-    // 兜底：无云端时用内联数据生成二维码
+    // 兜底：即使照片上传失败，也用本地数据生成二维码
     renderQR();
-    toast('云端同步失败，二维码使用本地数据');
+    toast('照片上传失败，二维码仅含文字信息');
   }
 }
 
@@ -919,6 +960,8 @@ function handlePhoto(e) {
   const reader = new FileReader();
   reader.onload = function(ev) {
     data.photo = ev.target.result;
+    // 新照片需要重新上传云端，清除旧的photoUrl
+    data.photoUrl = '';
     document.getElementById('photoPreview').innerHTML = '<img src="' + data.photo + '">';
     toast('照片已加载，记得点保存');
   };
@@ -931,6 +974,7 @@ function handlePhoto(e) {
 }
 function clearPhoto() {
   data.photo = '';
+  data.photoUrl = '';
   document.getElementById('photoPreview').innerHTML = '<span class="ph">点击上传</span>';
 }
 
@@ -1064,7 +1108,8 @@ function saveImage() {
         }
       }
 
-      const photoSrc = data.photoUrl || data.photo;
+      // 优先使用本地data URL绘制（避免云端图片CORS污染canvas）
+      const photoSrc = data.photo || data.photoUrl;
       if (photoSrc) {
         const img = new Image();
         img.crossOrigin = 'anonymous';
@@ -1133,6 +1178,9 @@ document.getElementById('editModal').addEventListener('click', function(e) {
 });
 document.getElementById('imgModal').addEventListener('click', function(e) {
   if (e.target === this) closeImgModal();
+});
+document.getElementById('calModal').addEventListener('click', function(e) {
+  if (e.target === this) closeCalendar();
 });
 </script>
 </body>
