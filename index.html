@@ -649,23 +649,22 @@ function compressPhoto(photoDataUrl, maxW, maxH, quality) {
   });
 }
 
-// 上传照片到云端（catbox.moe 免费图床）
+// 上传照片到云端（telegra.ph 图床，微信可访问，无需API key）
 async function uploadPhotoToCloud(photoDataUrl) {
   // 先压缩
   const compressed = await compressPhoto(photoDataUrl, 300, 400, 0.7);
   if (!compressed) throw new Error('压缩失败');
   const blob = await (await fetch(compressed)).blob();
   const formData = new FormData();
-  formData.append('reqtype', 'fileupload');
-  formData.append('fileToUpload', blob, 'photo.jpg');
-  const resp = await fetch('https://catbox.moe/user/api.php', {
+  formData.append('file', blob, 'photo.jpg');
+  const resp = await fetch('https://telegra.ph/upload', {
     method: 'POST',
     body: formData
   });
   if (!resp.ok) throw new Error('上传失败');
-  const url = (await resp.text()).trim();
-  if (!url.startsWith('http')) throw new Error('返回异常');
-  return url;
+  const result = await resp.json();
+  if (!result || !result[0] || !result[0].src) throw new Error('返回异常');
+  return 'https://telegra.ph' + result[0].src;
 }
 
 // ========== 二维码分享URL ==========
